@@ -1,0 +1,19 @@
+{
+  "auth": "zef:lucs",
+  "build-depends": [
+  ],
+  "depends": [
+  ],
+  "description" : "Manage my code snippets",
+  "license" : "Artistic-2.0",
+  "name": "Code::Snippets",
+  "provides": {
+    "Code::Snippets": "lib/Code/Snippets.rakumod"
+  },
+  "resources": [
+  ],
+  "test-depends": [
+    "Test::Selector"
+  ],
+  "version": "0.1.0"
+}

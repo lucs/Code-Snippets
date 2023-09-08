@@ -1,0 +1,181 @@
+=begin pod
+
+=head1 Nomenclature
+
+    snim   : snippet marker
+    snal   : snippet alias
+    snalex : snippet alias expression
+    snalob : snippet alias object
+    snip   : snippet
+
+=head1 NAME
+
+Code::Snippets - Manage code snippets contained in a single file.
+
+        #|{A regex that matches the beginning of a snippet, right up to
+        its snalex.}
+    Regex :$snim,
+
+    Str :$snips-dir = "/tmp",
+
+    Str :$snips-file,
+
+        #|{A string that may be appended as a default file extension.}
+    Str :$file-ext = "",
+
+        #|{Will be applied to the snippet text before it is written out to disk.}
+
+=head1 SYNOPSIS
+
+Code file:
+
+    use Code::Snippets;
+
+        # Handle Perl snippets.
+    my $CS = Code::Snippets->new(
+        snips-file => "perl-snippets",
+
+            # This also happens to be the default value.
+        snips-dir => "/tmp",
+        snim => qr/ ^^ "## ID:" <.sp>+ /,
+        file-ext => ".pl",
+        fix-text => sub ($text) {
+            $text =~ s:g/ ^^ "##__" /__/;
+            return $text;
+        },
+    );
+
+A corresponding snippets file:
+
+    Here are some Perl snippets
+
+    ## ID: foo Bla bla
+
+    print "This snippet is 'foo.pl'\n";
+
+    ## ID: SKIP
+
+    This snippet will be ignored.
+    ...
+
+    ## ID: bar
+
+    print "$_" for <DATA>;
+
+    ##__END__
+
+    fix-text() will get rid of the "##" preceding "__END__" in the
+    extracted snippets file. Having "__END__" commented out in the
+    snippets file allows syntax highlighting to work better there.
+
+=head1 DESCRIPTION
+
+When learning new programming languages, frameworks, or techniques, I
+often try out short code snippets and like to keep them around for
+reference. But I find it rather inconvenient to have to rummage
+through dozens of tiny snippets, each in its own file, to retrieve or
+modify code examples or variants. This module helps me manage a bunch
+of more or less independent snippets all in the same file and to on
+demand extract them out to disk; some other code will need to take
+care of actually running, compiling, whatever, the resulting extracted
+snippets.
+
+Each snippet is identified by its snippet alias expression (snalex),
+made up of the non-whitespace characters immediately following the
+snippet marker ($self.snim). This expression holds the snippet alias
+and information to build the file name the snippet will be extracted
+to.
+
+The alias and the file name info are separated by a colon; if there is
+no colon, the alias is used to build the file name.
+
+If the ID begins with a dot, a dash, or both, in any order,
+they have a special meaning:
+
+    . : Don't append $self.file-ext to the snippet file name.
+
+    - : Don't include the snippet ID line nor any non-blank lines that
+        immediately follow it in the extracted snippet.
+
+    : : Separates ID alias from its file spec. Having this disables
+        automatic file extension appending.
+
+In the example, each snippet will start with a string matching
+C<qr/^## ID: /m>, and will extend up to the next such match or the
+end of the file.
+
+Also, "SKIP" is special and the corresponding snippet will simply  be
+ignored.
+
+=head1 Snip alias expressions
+
+The ｢◑｣ represents a string of at most one each of ｢.｣ and ｢-｣, in any
+order, and may be empty, where the symbols mean:
+
+    ｢.｣ : No automatic file extension.
+    ｢-｣ : ID line and header not placed in extract.
+
+So, one of < . - .- -. >, or empty.
+
+        Skip the snippet completely.
+    SKIP
+
+    ｢Σ｣ represents the snippet alias, ｢M｣, the name of what will be
+    the main file name (if not ｢Σ｣), also marked with ｢*｣, the other
+    letters, arbitrary file (or sometimes, directory) names.
+
+        Single file in top level.
+    ◑Σ        * ⋯/Σ
+
+        Multiple files in top level.
+    ◑Σ:M      * ⋯/M
+    ◑Σ::a       ⋯/a
+
+        Single file in subdir.
+    ◑Σ/       * ⋯/Σ/Σ
+
+        Single file in subdir.
+    ◑Σ/M      * ⋯/Σ/M
+
+        Multiple files in subdir.
+    ◑Σ/a/M    * ⋯/Σ/a/M
+    ◑Σ//        ⋯/Σ/Σ
+    ◑Σ//b       ⋯/Σ/b
+    ◑Σ//c       ⋯/Σ/c
+    ◑Σ//d/e     ⋯/Σ/d/e
+
+        Invalid: duplicates, or too many or no main indicated.
+        (Each column is a separate case.)
+    ◑Σ:a    ◑Σ:     ◑Σ::a   ◑Σ//a   ◑Σ/
+    ◑Σ::b   ◑Σ:a    ◑Σ::    ◑Σ//b   ◑Σ/a
+    ◑Σ:a
+
+Example snippet aliases and their corresponding file names, given that
+the default file extension is ｢raku｣, with the main file indicated by
+｢*｣:
+
+    .eg1::Foo.rakumod     ⋯/Foo.rakumod
+    .eg1::Foo.t           ⋯/Foo.t
+     eg1:Foo            * ⋯/Foo.raku
+
+    .eg2/Foo.t          * ⋯/eg2/Foo.t
+    .eg2//Foo.rakumod     ⋯/eg2/Foo.rakumod
+     eg2//Foo             ⋯/eg2/Foo.raku
+
+Are these valid? Not sure (lucs, ☰2023-02-19.Sun):
+
+    ◑Σ::a/b       ⋯/a/b
+
+=head1 AUTHOR
+
+Luc St-Louis <lucs@pobox.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2015
+
+This library is free software; you can redistribute it and/or modify
+it under the Artistic License 2.0.
+
+=end pod
+

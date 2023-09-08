@@ -1,0 +1,63 @@
+use Test;
+use Test::Selector;
+use Code::Snippets;
+
+my $snim = / ^^ ID /;
+my $file-ext = ".ext";
+
+# --------------------------------------------------------------------
+# Malformed snippet (no snim found), can't build Snip.
+
+t e1 => {
+    my ($ok, $got) = Code::Snippets::Snip.build("Moop\n\nabc\n", $snim, :$file-ext);
+    ok(! $ok, "Snip.build not ok.");
+    like($got, / "Incorrect snippet " /, "Incorrect snim or snalex.");
+};
+
+# --------------------------------------------------------------------
+# Invalid snalex, can't build Snip.
+
+t e2 => {
+    my ($ok, $got) = Code::Snippets::Snip.build("ID ..f\n\nabc\n", $snim, :$file-ext);
+    ok(! $ok, "Snip.build not ok.");
+    like($got, / "Invalid snippet alias expression" .* "..f" /, "Invalid snalex.");
+};
+
+# --------------------------------------------------------------------
+t a1 => {
+    for (
+        [1, "ID f\n\nabc\n",        "f",     "f.ext", True, "ID f\n\nabc\n"],
+        [2, "ID  .f\n\nabc\n",      "f",     "f",     True, "ID  .f\n\nabc\n"],
+        [3, "ID -f\n\nabc\n",       "f",     "f.ext", True, "abc\n"],
+        [4, "ID .-f//g/\n\nabc\n",  "f",     "f/g/f", False, "abc\n"],
+    ) -> $test-data {
+        my ($foo, $text, $exp_snal, $exp_path, $exp_main, $exp_text) = @$test-data;
+        my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim, :$file-ext);
+        die "Broken test, \$ok should have been True." unless $ok;
+        is($snip.snal, $exp_snal, "$foo: snal");
+        is($snip.path, $exp_path, "$foo: path");
+        is($snip.main, $exp_main, "$foo: main");
+        is($snip.text, $exp_text, "$foo: text");
+    }
+};
+
+# --------------------------------------------------------------------
+# Verify that 'fix-text' functions correctly.
+
+t a2 => {
+    my $fix-text = sub ($t is copy) {
+        $t ~~ s:g/ (\d+) /<$0>/;
+        return $t;
+    };
+    for (
+        [1, "ID f\n\nabc 123 def\n",  "f.ext", True, "ID f\n\nabc <123> def\n"],
+    ) -> $test-data {
+        my ($foo, $text, $exp_path, $exp_main, $exp_text) = @$test-data;
+        my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim, :$file-ext, :$fix-text);
+        die "Broken test, \$ok should have been True." unless $ok;
+        is($snip.text, $exp_text, "$foo: text");
+    }
+};
+
+done-testing;
+
