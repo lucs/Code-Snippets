@@ -32,9 +32,9 @@ t b1 => {
        # [|< f//g/h Σ/g/h  >, False],
     ) -> $test-data {
             # Expected values.
-        my %exp = <snalex file main> Z=> @$test-data;
+        my %exp = <snalex path main> Z=> @$test-data;
         %exp<snal> = 'f';
-        %exp<file> ~~ s:g/ Σ /{%exp<snal>}/;
+        %exp<path> ~~ s:g/ Σ /{%exp<snal>}/;
         my $snalex = %exp<snalex>;
         my $snalob = Code::Snippets::Snalob.from-str($snalex);
         for %exp.kv -> $k, $v {
