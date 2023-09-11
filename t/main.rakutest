@@ -3,6 +3,10 @@ use Test;
 use Test::Selector;
 use Code::Snippets;
 
+# --------------------------------------------------------------------
+done-testing;
+=finish
+
 my $snim = / ^^ SNIM /;
 
 my $CS = Code::Snippets.new;
