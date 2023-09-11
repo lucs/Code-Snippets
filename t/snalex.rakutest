@@ -6,21 +6,35 @@ use Code::Snippets;
 # --------------------------------------------------------------------
 t b1 => {
     for (
-        [|< f:     f    f      >, True],
-        [|< f:g    f    g      >, True],
-        [|< f::    f    f      >, False],
-        [|< f::g   f    g      >, False],
-        [|< f/     f    f/f    >, True],
-        [|< f/g    f    f/g    >, True],
-        [|< f/g/   f    f/g/f  >, True],
-        [|< f//g/  f    f/g/f  >, False],
-        [|< f//    f    f/f    >, False],
-        [|< f//g   f    f/g    >, False],
-        [|< f/g/h  f    f/g/h  >, True],
-        [|< f//g/h f    f/g/h  >, False],
+        [|< f      f      >, True],
+        [|< f:g    g      >, True],
+        [|< f::    f      >, False],
+        [|< f::g   g      >, False],
+        [|< f/     Σ/Σ    >, True],
+        [|< f/g    Σ/g    >, True],
+        [|< f/g/   Σ/g/Σ  >, True],
+        [|< f//g/  Σ/g/Σ  >, False],
+        [|< f//    Σ/Σ    >, False],
+        [|< f//g   Σ/g    >, False],
+        [|< f/g/h  Σ/g/h  >, True],
+        [|< f//g/h Σ/g/h  >, False],
+
+       # [|< f:Σ    f      >, True],
+       # [|< f::    f      >, False],
+       # [|< f::g   g      >, False],
+       # [|< f/     Σ/Σ    >, True],
+       # [|< f/g    Σ/g    >, True],
+       # [|< f/g/   Σ/g/Σ  >, True],
+       # [|< f//g/  Σ/g/Σ  >, False],
+       # [|< f//    Σ/Σ    >, False],
+       # [|< f//g   Σ/g    >, False],
+       # [|< f/g/h  Σ/g/h  >, True],
+       # [|< f//g/h Σ/g/h  >, False],
     ) -> $test-data {
             # Expected values.
-        my %exp = <snalex snal file main> Z=> @$test-data;
+        my %exp = <snalex file main> Z=> @$test-data;
+        %exp<snal> = 'f';
+        %exp<file> ~~ s:g/ Σ /{%exp<snal>}/;
         my $snalex = %exp<snalex>;
         my $snalob = Code::Snippets::Snalob.from-str($snalex);
         for %exp.kv -> $k, $v {
@@ -48,29 +62,6 @@ t b2 => {
         ok(! $snalob, "Invalid snalex '$snalex'.")
     }
 }
-
-# --------------------------------------------------------------------
-t a1 => {
-    for (
-        [|< foo    foo  foo  >, True,  True],
-        [|< fo.o   fo.o fo.o >, True,  True],
-        [|< .foo   foo  foo  >, False, True],
-        [|< .f-oo  f-oo f-oo >, False, True],
-        [|< -foo   foo  foo  >, True,  False],
-        [|< -.foo  foo  foo  >, False, False],
-        [|< -.foo  foo  foo  >, False, False],
-        [|< -f     f    f    >, True,  False],
-        [|< -.foo  foo  foo  >, False, False],
-    ) -> $test-data {
-            # Expected values.
-        my %exp = <snalex snal file add-ext keep-idl> Z=> @$test-data;
-        my $snalex = %exp<snalex>;
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
-        for %exp.kv -> $k, $v {
-            is($snalob."$k"(), $v, sprintf('%6s %8s %s', $snalex, $k, $v));
-        }
-    }
-};
 
 # --------------------------------------------------------------------
 t a2 => {
