@@ -2,14 +2,12 @@ use Test;
 use Test::Selector;
 use Code::Snippets;
 
-my $snim = / ^^ ID /;
-my $file-ext = ".ext";
 
 # --------------------------------------------------------------------
 # Malformed snippet (no snim found), can't build Snip.
 
 t e1 => {
-    my ($ok, $got) = Code::Snippets::Snip.build("Moop\n\nabc\n", $snim, :$file-ext);
+    my ($ok, $got) = Code::Snippets::Snip.build("Moop\n\nabc\n", $snim);
     ok(! $ok, "Snip.build not ok.");
     like($got, / "Incorrect snippet " /, "Incorrect snim or snalex.");
 };
@@ -18,26 +16,28 @@ t e1 => {
 # Invalid snalex, can't build Snip.
 
 t e2 => {
-    my ($ok, $got) = Code::Snippets::Snip.build("ID ..f\n\nabc\n", $snim, :$file-ext);
+    my $snim = / ^^ ID .*? /;
+    my ($ok, $got) = Code::Snippets::Snip.build("ID f abc\n", $snim);
     ok(! $ok, "Snip.build not ok.");
     like($got, / "Invalid snippet alias expression" .* "..f" /, "Invalid snalex.");
 };
 
 # --------------------------------------------------------------------
 t a1 => {
+    my $snim = / ^^ ID .*? /;
     for (
-        [1, "ID f\n\nabc\n",        "f",     "f.ext", True, "ID f\n\nabc\n"],
-        [2, "ID  .f\n\nabc\n",      "f",     "f",     True, "ID  .f\n\nabc\n"],
-        [3, "ID -f\n\nabc\n",       "f",     "f.ext", True, "abc\n"],
-        [4, "ID .-f//g/\n\nabc\n",  "f",     "f/g/f", False, "abc\n"],
+        [1, "ID f\n\nabc\n",      "f",     "f.ext", True, "ID f\n\nabc\n"],
+        [2, "ID f\n\nabc\n",      "f",     "f",     True, "ID  .f\n\nabc\n"],
+        [3, "ID f\n\nabc\n",      "f",     "f.ext", True, "abc\n"],
+        [4, "ID f//g/\n\nabc\n",  "f",     "f/g/f", False, "abc\n"],
     ) -> $test-data {
-        my ($foo, $text, $exp_snal, $exp_path, $exp_main, $exp_text) = @$test-data;
-        my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim, :$file-ext);
+        my ($i, $text, $exp_snal, $exp_path, $exp_main, $exp_text) = @$test-data;
+        my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim);
         die "Broken test, \$ok should have been True." unless $ok;
-        is($snip.snal, $exp_snal, "$foo: snal");
-        is($snip.path, $exp_path, "$foo: path");
-        is($snip.main, $exp_main, "$foo: main");
-        is($snip.text, $exp_text, "$foo: text");
+        is($snip.snal, $exp_snal, "$i: snal");
+        is($snip.path, $exp_path, "$i: path");
+        is($snip.main, $exp_main, "$i: main");
+        is($snip.text, $exp_text, "$i: text");
     }
 };
 
@@ -52,10 +52,10 @@ t a2 => {
     for (
         [1, "ID f\n\nabc 123 def\n",  "f.ext", True, "ID f\n\nabc <123> def\n"],
     ) -> $test-data {
-        my ($foo, $text, $exp_path, $exp_main, $exp_text) = @$test-data;
+        my ($i, $text, $exp_path, $exp_main, $exp_text) = @$test-data;
         my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim, :$file-ext, :$fix-text);
         die "Broken test, \$ok should have been True." unless $ok;
-        is($snip.text, $exp_text, "$foo: text");
+        is($snip.text, $exp_text, "$i: text");
     }
 };
 
