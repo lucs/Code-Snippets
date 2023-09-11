@@ -6,17 +6,8 @@ my regex filename { <[\w.-]>+ };
 my regex filepath { <[\w.-]> <[/\w.-]>* };
 
 grammar Snalex::Grammar {
-    token spec {
-        <mods> <snal> [<filenamed> | <subdired>]?
-    }
-    token mods {
-        (<[.-]> ** 0..2)
-        <?{
-            ($0.chars < 2) || do {
-                my $m = $0;
-                so($m ~~ /'-'/ && $m ~~ /'.'/);
-            }
-        }>
+    token snalex {
+        <snal> [<filenamed> | <subdired>]?
     }
     token filenamed { ([ ':' | '::' ]) <filename>? }
     token subdired  { ([ '/' | '//' ]) <filepath>? }
@@ -26,23 +17,15 @@ class Snalob {...}
 
 class Snalex::Actions {
     has $.the_snal;
-    has $.keep-idl = True;
-    has $.add-ext  = True;
     has $.main  = True;
     has $.file;
-    method spec ($/) {
+    method snalex ($/) {
         make Snalob.new(
             snalex => ~$/,
             snal => ~$<snal>,
             file => $.file // ~$<snal>,
-            add-ext => $.add-ext,
-            keep-idl => $.keep-idl,
             main => $.main,
         );
-    }
-    method mods ($/) {
-        $!add-ext  = False if index(~$/, '.').defined;
-        $!keep-idl = False if index(~$/, '-').defined;
     }
     method snal ($/) {
         $!the_snal = ~$/;
@@ -68,16 +51,13 @@ class Snalob {
     has Str $.snalex;
     has Str $.snal;
     has Str $.file;
-        # Add file extension to file name.
-    has Bool $.add-ext;
-        # Keep the ID lines in the extracted snippet.
-    has Bool $.keep-idl;
     has Bool $.main;
 
     method from-str (Str $snalex) {
+        note "snalex <$snalex>";
         my $snalex-parsed = Snalex::Grammar.parse(
             $snalex,
-            rule => 'spec',
+            rule => 'snalex',
             :actions(Snalex::Actions.new),
         );
         return $snalex-parsed ?? $snalex-parsed.ast !! Nil;
@@ -86,34 +66,33 @@ class Snalob {
 
 # --------------------------------------------------------------------
 class Snip {
-    has Str $.snal;
-        # Extension will already have been added or not.
-    has Str $.path;
-        # ID lines will already have been stripped or not.
-    has Str $.text;
+    has Str  $.snal;
+    has Str  $.beg,
+    has Str  $.txt,
+    has Str  $.end,
+    has Str  $.snalex;
+    has Str  $.path;
     has Bool $.main;
 
     method build (
-        Str $text is copy,
-        Regex $snim,
-        Str :$file-ext = "",
-        Block :$fix-text = sub ($t) { $t },
+        $beg,
+        $txt,
+        $end,
+        $snalex-rx,
     ) {
-        $text ~~ / ^ $snim <blank>+ $<snalex>=(\S+) / orelse return False,
-          "Incorrect snippet marker or missing snippet alias expression.";
-        my $snalex = ~$<snalex>;
+        my $snalex = ~($beg ~~ / $snalex-rx /);
         my $snalob = Snalob.from-str($snalex) orelse
           return False, "Invalid snippet alias expression '$snalex'.";
         my $path = $snalob.file;
-        $path ~= $file-ext if $snalob.add-ext;
-        $text ~~ s/ $snim <blank>+ \S+ .*? \n+ // unless $snalob.keep-idl;
-        $text = $fix-text.($text);
-        return True, self.bless(
-            snal => $snalob.snal,
+        return True, self.bless:
+            :snal($snalob.snal),
+            :$beg,
+            :$txt,
+            :$end,
+            :$snalex,
             :$path,
-            :$text,
-            main => $snalob.main,
-        );
+            :main($snalob.main),
+        ;
     }
 }
 
@@ -151,27 +130,34 @@ method add-snip (Snip $snip) {
 
 # --------------------------------------------------------------------
 method build (
-    Regex   :$snim,
+    Regex   :$snip-bef_ʀ,
+    Regex   :$snalex_ʀ,
+    Regex   :$snip-aft_ʀ,
     Str     :$snips-dir = "/tmp",
     Str     :$snips-file,
-    Str     :$file-ext = "",
-    Block   :$fix-text = sub ($t) { $t },
 ) {
     return False, "Can't read '$snips-file'." unless $snips-file.IO.f;
     my %snips;
     my $self = Code::Snippets.new(:$snips-dir, :$snips-file, :%snips);
     my $snips-text = slurp($snips-file);
     $snips-text.comb(
-        / $<snip-text>=[$snim \s+ .*?] <before $snim | $> /, :match
+        /
+            $<snip-bef> = [$snip-bef_ʀ .*? \n ]
+            $<snip-txt> = .*?
+            $<snip-end> = <before [$snip-aft_ʀ \n] | $snip-bef_ʀ | $>
+        /, :match
     ).map({
-        my ($ok-snip, $got-snip) = Code::Snippets::Snip.build(
-            ~.<snip-text>, $snim, :$file-ext, :$fix-text,
+        my ($ok-snip, $snip) = Code::Snippets::Snip.build(
+            ~.<snip-beg>,
+            ~.<snip-txt>,
+            ~.<snip-end>,
+            $snalex_ʀ,
         );
-        $ok-snip or $self.errors.push($got-snip), next;
-        my $snal = $got-snip.snal;
+        $ok-snip or $self.errors.push($snip), next;
+        my $snal = $snip.snal;
         next if $snal eq 'SKIP';
         last if $snal eq 'STOP';
-        my ($ok-add, $got-add) = $self.add-snip($got-snip);
+        my ($ok-add, $got-add) = $self.add-snip($snip);
         $ok-add or $self.errors.push($got-add);
     });
     return True, $self;
