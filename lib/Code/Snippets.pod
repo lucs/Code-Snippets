@@ -2,11 +2,12 @@
 
 =head1 Nomenclature
 
-    snim   : snippet marker
-    snal   : snippet alias
-    snalex : snippet alias expression
-    snalob : snippet alias object
-    snip   : snippet
+    snimbeg : snippet marker beginning
+    snimend : snippet marker end
+    snal    : snippet alias
+    snalex  : snippet alias expression
+    snalob  : snippet alias object
+    snip    : snippet
 
 =head1 NAME
 
@@ -92,8 +93,6 @@ no colon, the alias is used to build the file name.
 If the ID begins with a dot, a dash, or both, in any order,
 they have a special meaning:
 
-    . : Don't append $self.file-ext to the snippet file name.
-
     - : Don't include the snippet ID line nor any non-blank lines that
         immediately follow it in the extracted snippet.
 
@@ -107,64 +106,53 @@ end of the file.
 Also, "SKIP" is special and the corresponding snippet will simply  be
 ignored.
 
-=head1 Snip alias expressions
+=head1 Snip alias expressions (snalex)
 
-The ｢◑｣ represents a string of at most one each of ｢.｣ and ｢-｣, in any
-order, and may be empty, where the symbols mean:
+Snippet marker beginning and ending lines will not be placed in the
+extracted files if the snalex is prefixed with a '-'.
 
-    ｢.｣ : No automatic file extension.
-    ｢-｣ : ID line and header not placed in extract.
+Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
 
-So, one of < . - .- -. >, or empty.
+    snalex      Main?       What
+                  File
+    ------      ------      ----
+    SKIP                    Skip the snippet completely.
 
-        Skip the snippet completely.
-    SKIP
+    ⟨snal⟩      * ⋯/Σ       Single file in top level.
 
-    ｢Σ｣ represents the snippet alias, ｢M｣, the name of what will be
-    the main file name (if not ｢Σ｣), also marked with ｢*｣, the other
-    letters, arbitrary file (or sometimes, directory) names.
+    ⟨snal⟩      * ⋯/Σ       Multiple files in top level.
+    ⟨snal⟩::a     ⋯/a
 
-        Single file in top level.
-    ◑Σ        * ⋯/Σ
+    ⟨snal⟩/     * ⋯/Σ/Σ     Single file in subdir.
 
-        Multiple files in top level.
-    ◑Σ:M      * ⋯/M
-    ◑Σ::a       ⋯/a
+    ⟨snal⟩/a    * ⋯/Σ/a     Single file in subdir.
 
-        Single file in subdir.
-    ◑Σ/       * ⋯/Σ/Σ
-
-        Single file in subdir.
-    ◑Σ/M      * ⋯/Σ/M
-
-        Multiple files in subdir.
-    ◑Σ/a/M    * ⋯/Σ/a/M
-    ◑Σ//        ⋯/Σ/Σ
-    ◑Σ//b       ⋯/Σ/b
-    ◑Σ//c       ⋯/Σ/c
-    ◑Σ//d/e     ⋯/Σ/d/e
+    ⟨snal⟩/a/M  * ⋯/Σ/a/    Multiple files in subdir.
+    ⟨snal⟩//      ⋯/Σ/Σ
+    ⟨snal⟩//b     ⋯/Σ/b
+    ⟨snal⟩//c     ⋯/Σ/c
+    ⟨snal⟩//d/e   ⋯/Σ/d/e
 
         Invalid: duplicates, or too many or no main indicated.
         (Each column is a separate case.)
-    ◑Σ:a    ◑Σ:     ◑Σ::a   ◑Σ//a   ◑Σ/
-    ◑Σ::b   ◑Σ:a    ◑Σ::    ◑Σ//b   ◑Σ/a
-    ◑Σ:a
+    ⟨snal⟩:a    ⟨snal⟩:     ⟨snal⟩::a   ⟨snal⟩//a   ⟨snal⟩/
+    ⟨snal⟩::b   ⟨snal⟩:a    ⟨snal⟩::    ⟨snal⟩//b   ⟨snal⟩/a
+    ⟨snal⟩:a
 
-Example snippet aliases and their corresponding file names, given that
-the default file extension is ｢raku｣, with the main file indicated by
-｢*｣:
+Example snippet aliases and their corresponding file names, with the
+main file indicated by ｢*｣:
 
-    .eg1::Foo.rakumod     ⋯/Foo.rakumod
-    .eg1::Foo.t           ⋯/Foo.t
-     eg1:Foo            * ⋯/Foo.raku
+    eg1::Foo.rakumod     ⋯/Foo.rakumod
+    eg1::Foo.t           ⋯/Foo.t
+    eg1:Foo            * ⋯/Foo.raku
 
-    .eg2/Foo.t          * ⋯/eg2/Foo.t
-    .eg2//Foo.rakumod     ⋯/eg2/Foo.rakumod
-     eg2//Foo             ⋯/eg2/Foo.raku
+    eg2/Foo.t          * ⋯/eg2/Foo.t
+    eg2//Foo.rakumod     ⋯/eg2/Foo.rakumod
+    eg2//Foo             ⋯/eg2/Foo.raku
 
 Are these valid? Not sure (lucs, ☰2023-02-19.Sun):
 
-    ◑Σ::a/b       ⋯/a/b
+    ◑⟨snal⟩::a/b       ⋯/a/b
 
 =head1 AUTHOR
 
