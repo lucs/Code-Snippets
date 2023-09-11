@@ -63,27 +63,9 @@ class Snalob {
 
 # --------------------------------------------------------------------
 class Snip {
-    has Str  $.path;
-    has Bool $.main;
     has Str  $.bef,
     has Str  $.txt,
     has Str  $.aft,
-
-    method build (
-        $path,
-        $main,
-        $bef,
-        $txt,
-        $aft,
-    ) {
-        return True, self.bless:
-            :$path,
-            :$main,
-            :$bef,
-            :$txt,
-            :$aft,
-        ;
-    }
 }
 
 # --------------------------------------------------------------------
@@ -96,16 +78,13 @@ has $.snips-dir = "";
 
     #|{
         snips %
-            $snal %
-                Snip @
+            ⟨snal⟩ %
+                paths %
+                    ⟨path⟩ $ ⟨Snip⟩
+                main $ ⟨path⟩
 
     }
 has %.snips;
-
-    # %.snal-pathͱsnip{eg01}{eg01/utils} is a Snip
-#has %.snal-pathͱsnip;
-
-has @.errors;
 
 # --------------------------------------------------------------------
 method build (
@@ -125,32 +104,27 @@ method build (
             $<snip-aft> = <before [$snip-aft_ʀ \n] | $snip-bef_ʀ | $>
         /, :match
     ).map({
-        my $bef = ~.<snip-bef>;
-        my $txt = ~.<snip-txt>;
-        my $aft = ~.<snip-aft>;
-        my $snalex = ~($bef ~~ / <$snalex_ʀ> /);
+        my $snip = Code::Snippets::Snip.new(
+            bef => ~.<snip-bef>,
+            txt => ~.<snip-txt>,
+            aft => ~.<snip-aft>,
+        );
+        my $snalex = ~($snip.bef ~~ / <$snalex_ʀ> /);
         my $snalob = Snalob.from-str($snalex) orelse
           return False, "Invalid snippet alias expression '$snalex'.";
 
-       # note "snalob: ", $snalob.raku;
         my $snal = $snalob.snal;
 
         next if $snal eq 'SKIP';
         last if $snal eq 'STOP';
 
         my $path = $snalob.path;
-       # note "path: <$path>";
-        $path ~~ $self.snips{$snal} or
-            return False, "Path '$path' already exists for snippet alias '$snal'.";
+        my $main = $snalob.main;
 
-        my $snip = Code::Snippets::Snip.new(
-            :main($snalob.main),
-            :path($snalob.path),
-            :$bef,
-            :$txt,
-            :$aft,
-        );
-        $self.snips{$snal}{$path} = $snip;
+        $self.snips{$snal}<paths>{$path}:exists and
+         return False, "Path '$path' already exists for snippet alias '$snal'.";
+        $self.snips{$snal}<paths>{$path} = $snip;
+        $self.snips{$snal}<main> = $path;
     });
     return True, $self;
 }
@@ -169,12 +143,13 @@ method list-paths (Str $snal) {
     if unable to.
     }
 method extract ($snal-want) {
-    for %.snips.keys -> $snal-got {
+    for self.snips.keys -> $snal-got {
         next unless $snal-got eq $snal-want;
-        for %.snips{$snal-want}.list -> $snip {
-            my $path = $.snips-dir ~ "/" ~ $snip.snalob.path;
-            $path.IO.dirname.IO.mkdir;
-            $path.IO.spurt: .bef ~ .txt given $snip;
+        for self.snips{$snal-want}<paths>.keys -> $path {
+            my $file = $.snips-dir ~ "/" ~ $path;
+            $file.IO.dirname.IO.mkdir;
+            my $snip = self.snips{$snal-want}<paths>{$path};
+            $file.IO.spurt: .bef ~ .txt given $snip;
         }
     }
 
