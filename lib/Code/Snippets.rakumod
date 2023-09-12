@@ -1,5 +1,23 @@
 unit class Code::Snippets;
 
+my %*SUB-MAIN-OPTS = :named-anywhere;
+
+#`{{
+
+Nomenclature
+
+    snip    : snippet
+    snip-bef: before-snippet marker
+    snip-aft: after-snippet marker
+    snal    : snippet alias
+    snalex  : snippet alias expression
+    snalob  : snippet alias object
+
+}}
+
+# --------------------------------------------------------------------
+use IO::Glob;
+
 # --------------------------------------------------------------------
 my regex snal     { (<[\w]> <[\w.-]>*) };
 my regex filename { <[\w.-]>+ };
@@ -88,20 +106,29 @@ has %.snips;
 
 # --------------------------------------------------------------------
 method build (
-    Regex   :$snip-bef_ʀ,
-    Regex   :$snip-aft_ʀ,
-    Regex   :$snalex_ʀ,
+    Regex   :$snip-bef_rx,
+    Regex   :$snip-aft_rx,
+    Regex   :$snalex_rx,
     Str     :$snips-dir = "/tmp",
     Str     :$snips-file,
 ) {
     return False, "Can't read '$snips-file'." unless $snips-file.IO.f;
+
+        # Make sure that the destination directory is writable or that
+        # is can be created as such.
+    given $snips-dir.IO {
+        ( .d && .w)
+         or ( ! .e && .mkdir && .rmdir)
+         or return False, "Can't extract snips to <$snips-dir>";
+    }
+
     my $self = Code::Snippets.new(:$snips-dir, :$snips-file);
     my $snips-text = slurp($snips-file);
     $snips-text.comb(
         /
-            $<snip-bef> = [$snip-bef_ʀ .*? \n ]
+            $<snip-bef> = [$snip-bef_rx .*? \n ]
             $<snip-txt> = .*?
-            $<snip-aft> = <before [$snip-aft_ʀ \n] | $snip-bef_ʀ | $>
+            $<snip-aft> = <before [$snip-aft_rx \n] | $snip-bef_rx | $>
         /, :match
     ).map({
         my $snip = Code::Snippets::Snip.new(
@@ -109,7 +136,7 @@ method build (
             txt => ~.<snip-txt>,
             aft => ~.<snip-aft>,
         );
-        my $snalex = ~($snip.bef ~~ / <$snalex_ʀ> /);
+        my $snalex = ~($snip.bef ~~ / <$snalex_rx> /);
         my $snalob = Snalob.from-str($snalex) orelse
           return False, "Invalid snippet alias expression '$snalex'.";
 
@@ -130,18 +157,34 @@ method build (
 }
 
 # --------------------------------------------------------------------
-method list-snals () {
-    self.snips.keys.sort;
-}
+method snals (:$with-paths = False, *@snal-globs) {
+    @snal-globs.push('*') unless @snal-globs.elems;
 
-method list-paths (Str $snal) {
-    self.snips{$snal}.keys.sort;
-}
-
-    #|{
-    Extracts the requested snal snippets to disk. Throws an exception
-    if unable to.
+    my @snals;
+    for @snal-globs -> $glob {
+        @snals.push: | self.snips.keys.grep:{ $_ ~~ glob($glob) };
     }
+    @snals .= sort;
+
+    if $with-paths {
+        @snals .= map({
+            my $snal = $_;
+            my $main-path = 
+            my @snal-paths;
+            for self.snips{$snal}<paths>.keys -> $path {
+                @snal-paths.push: sprintf "%s%s$path",
+                    $snal,
+                    (self.snips{$snal}<main> eq $path ?? ':' !! '-'),
+                ;
+            }
+            | @snal-paths;
+        });
+    }
+
+    return @snals;
+}
+
+# --------------------------------------------------------------------
 method extract ($snal-want) {
     for self.snips.keys -> $snal-got {
         next unless $snal-got eq $snal-want;
