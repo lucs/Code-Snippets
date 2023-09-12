@@ -3,6 +3,7 @@
   "build-depends": [
   ],
   "depends": [
+    "IO::Glob"
   ],
   "description" : "Manage code snippets",
   "license" : "Artistic-2.0",
@@ -15,5 +16,5 @@
   "test-depends": [
     "Test::Selector"
   ],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
