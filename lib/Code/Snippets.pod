@@ -1,73 +1,45 @@
 =begin pod
 
-=head1 Nomenclature
-
-    snimbeg : snippet marker beginning
-    snimend : snippet marker end
-    snal    : snippet alias
-    snalex  : snippet alias expression
-    snalob  : snippet alias object
-    snip    : snippet
-
 =head1 NAME
 
 Code::Snippets - Manage code snippets contained in a single file.
 
-        #|{A regex that matches the beginning of a snippet, right up to
-        its snalex.}
-    Regex :$snim,
-
-    Str :$snips-dir = "/tmp",
-
-    Str :$snips-file,
-
-        #|{A string that may be appended as a default file extension.}
-    Str :$file-ext = "",
-
-        #|{Will be applied to the snippet text before it is written out to disk.}
-
 =head1 SYNOPSIS
 
-Code file:
+Main program:
 
     use Code::Snippets;
 
-        # Handle Perl snippets.
-    my $CS = Code::Snippets->new(
-        snips-file => "perl-snippets",
-
-            # This also happens to be the default value.
-        snips-dir => "/tmp",
-        snim => qr/ ^^ "## ID:" <.sp>+ /,
-        file-ext => ".pl",
-        fix-text => sub ($text) {
-            $text =~ s:g/ ^^ "##__" /__/;
-            return $text;
-        },
+        # To handle Raku snippets for example.
+    (my $ok, $CS) = Code::Snippets.build(
+        snips-file  => ⟨some file⟩,
+        snips-dir   => ⟨some dir⟩,
+        snip-bef_rx => / ^^ ｢# ｣ '-'+ "\n# ID:" /,
+        snip-aft_rx => / ^^ "end-of-snippet" $$ /,
+        snalex_rx   => / <after ^^ "# ID:" \s+> \S+ /,
     );
+    $ok or say($CS), exit 1;
 
 A corresponding snippets file:
 
-    Here are some Perl snippets
+    Here are some Raku snippets.
 
-    ## ID: foo Bla bla
+    ## ID: baz Bla bla
 
-    print "This snippet is 'foo.pl'\n";
+    say "This is snippet 'baz'.";
+
+    end-of-snippet
+
+    This text will be ignored.
 
     ## ID: SKIP
 
     This snippet will be ignored.
     ...
 
-    ## ID: bar
+    ## ID: foo
 
-    print "$_" for <DATA>;
-
-    ##__END__
-
-    fix-text() will get rid of the "##" preceding "__END__" in the
-    extracted snippets file. Having "__END__" commented out in the
-    snippets file allows syntax highlighting to work better there.
+    say 42;
 
 =head1 DESCRIPTION
 
@@ -90,69 +62,75 @@ to.
 The alias and the file name info are separated by a colon; if there is
 no colon, the alias is used to build the file name.
 
-If the ID begins with a dot, a dash, or both, in any order,
-they have a special meaning:
+In the example, each snippet will start at the line immediately
+following a line matching / ^^ ｢# ｣ '-'+ "\n# ID:" / and will extend
+up to and stop right before the next such match, or the first line
+that matches / ^^ "end-of-snippet $$ /, or the end of the file.
 
-    - : Don't include the snippet ID line nor any non-blank lines that
-        immediately follow it in the extracted snippet.
-
-    : : Separates ID alias from its file spec. Having this disables
-        automatic file extension appending.
-
-In the example, each snippet will start with a string matching
-C<qr/^## ID: /m>, and will extend up to the next such match or the
-end of the file.
-
-Also, "SKIP" is special and the corresponding snippet will simply  be
-ignored.
+A snippet alias of "SKIP" is special and the corresponding snippet
+will simply  be ignored.
 
 =head1 Snip alias expressions (snalex)
 
-Snippet marker beginning and ending lines will not be placed in the
-extracted files if the snalex is prefixed with a '-'.
-
 Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
 
-    snalex      Main?       What
-                  File
-    ------      ------      ----
-    SKIP                    Skip the snippet completely.
+    snalex          Main?           What
+                      $snips-dir/⟨file⟩
+    ------          ------          ----
+    SKIP                            Skip the snippet completely.
 
-    ⟨snal⟩      * ⋯/Σ       Single file in top level.
+    ⟨snal⟩          : ⋯/Σ           Single file in top level.
+        Example: --------------------------------------------
+     sn0            : ⋯/sn0
 
-    ⟨snal⟩      * ⋯/Σ       Multiple files in top level.
-    ⟨snal⟩::a     ⋯/a
+    ⟨snal⟩:Σ.raku   : ⋯/Σ.raku      Single file in top level.
+        Example: --------------------------------------------
+     sn1:Σ.raku     : ⋯/sn1.raku
 
-    ⟨snal⟩/     * ⋯/Σ/Σ     Single file in subdir.
+    ⟨snal⟩          : ⋯/Σ           Multiple files in top level.
+    ⟨snal⟩::a         ⋯/a
+        Example: --------------------------------------------
+    sn2             : ⋯/sn2
+    sn2::a            ⋯/a
 
-    ⟨snal⟩/a    * ⋯/Σ/a     Single file in subdir.
+    ⟨snal⟩/         : ⋯/Σ/Σ         Single file in subdir.
+        Example: --------------------------------------------
+    sn3/            : ⋯/sn3/sn3
 
-    ⟨snal⟩/a/M  * ⋯/Σ/a/    Multiple files in subdir.
-    ⟨snal⟩//      ⋯/Σ/Σ
-    ⟨snal⟩//b     ⋯/Σ/b
-    ⟨snal⟩//c     ⋯/Σ/c
-    ⟨snal⟩//d/e   ⋯/Σ/d/e
+    sn3/4           : ⋯/sn4/a       Single file in subdir.
+
+    ⟨snal⟩/a/Σ      : ⋯/Σ/a/        Multiple files in subdir.
+    ⟨snal⟩//          ⋯/Σ/Σ
+    ⟨snal⟩//b         ⋯/Σ/b
+    ⟨snal⟩//c         ⋯/Σ/c
+    ⟨snal⟩//d/e       ⋯/Σ/d/e
+        Example: --------------------------------------------
+    sn5/a/Σ         : ⋯/sn5/a/      Multiple files in subdir.
+    sn5//             ⋯/sn5/sn5
+    sn5//b            ⋯/sn5/b
+    sn5//c            ⋯/sn5/c
+    sn5//d/e          ⋯/sn5/d/e
 
         Invalid: duplicates, or too many or no main indicated.
         (Each column is a separate case.)
     ⟨snal⟩:a    ⟨snal⟩:     ⟨snal⟩::a   ⟨snal⟩//a   ⟨snal⟩/
     ⟨snal⟩::b   ⟨snal⟩:a    ⟨snal⟩::    ⟨snal⟩//b   ⟨snal⟩/a
     ⟨snal⟩:a
+        Example: --------------------------------------------
+    snip01:a    snip02:     snip03::a   snip04//a   snip05/
+    snip01::b   snip02:a    snip03::    snip04//b   snip05/a
+    snip01:a
 
 Example snippet aliases and their corresponding file names, with the
-main file indicated by ｢*｣:
+main file indicated by ｢:｣:
 
     eg1::Foo.rakumod     ⋯/Foo.rakumod
     eg1::Foo.t           ⋯/Foo.t
-    eg1:Foo            * ⋯/Foo.raku
+    eg1:Foo            : ⋯/Foo.raku
 
-    eg2/Foo.t          * ⋯/eg2/Foo.t
+    eg2/Foo.t          : ⋯/eg2/Foo.t
     eg2//Foo.rakumod     ⋯/eg2/Foo.rakumod
     eg2//Foo             ⋯/eg2/Foo.raku
-
-Are these valid? Not sure (lucs, ☰2023-02-19.Sun):
-
-    ◑⟨snal⟩::a/b       ⋯/a/b
 
 =head1 AUTHOR
 
