@@ -3,6 +3,10 @@ use Test;
 use Test::Selector;
 use Code::Snippets;
 
+# Are these valid? Not sure (lucs, ☰2023-02-19.Sun):
+
+#     ◑⟨snal⟩::a/b       ⋯/a/b
+
 # --------------------------------------------------------------------
 t b1 => {
     for (
@@ -36,7 +40,7 @@ t b1 => {
         %exp<snal> = 'f';
         %exp<path> ~~ s:g/ Σ /{%exp<snal>}/;
         my $snalex = %exp<snalex>;
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
+        my $snalob = Code::Snippets::Snalob.new($snalex);
         for %exp.kv -> $k, $v {
             is($snalob."$k"(), $v, sprintf('%6s %8s %s', $snalex, $k, $v));
         }
@@ -58,7 +62,7 @@ t b2 => {
        f:/:
     >) -> $snalex {
         next if $snalex.substr(0, 1) eq '#';
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
+        my $snalob = Code::Snippets::Snalob.new($snalex);
         ok(! $snalob, "Invalid snalex '$snalex'.")
     }
 }
@@ -72,7 +76,7 @@ t a2 => {
        --foo
     >) -> $snalex {
         next if $snalex.substr(0, 1) eq '#';
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
+        my $snalob = Code::Snippets::Snalob.new($snalex);
         ok(! $snalob, "Invalid snalex '$snalex'.")
     }
 }
