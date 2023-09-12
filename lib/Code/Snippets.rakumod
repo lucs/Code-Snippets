@@ -1,6 +1,4 @@
-unit class Code::Snippets;
-
-my %*SUB-MAIN-OPTS = :named-anywhere;
+unit class Code::Snippets:ver<0.2.0>:auth<zef:lucs>;
 
 #`{{
 
