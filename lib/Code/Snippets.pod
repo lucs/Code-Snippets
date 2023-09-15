@@ -71,6 +71,14 @@ will simply  be ignored.
 
 =head1 Snip alias expressions (snalex)
 
+    # --------------------
+    snip1!&
+    snip2!&.raku
+    snip3!/&
+    snip3/baz.rakumod
+    snip4!/&.raku
+    snip4/baz.rakumod
+
 Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
 
 What
