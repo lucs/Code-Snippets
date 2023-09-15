@@ -14,8 +14,8 @@ Main program:
     (my $ok, $CS) = Code::Snippets.build(
         snips-file  => ⟨some file⟩,
         snips-dir   => ⟨some dir⟩,
-        snip-bef_rx => / ^^ ｢# ｣ '-'+ "\n# ID:" /,
-        snip-aft_rx => / ^^ "end-of-snippet" $$ /,
+        snip-bef_rx => / ^^ ｢## ｣ '-'+ "\n# ID:" /,
+        snip-aft_rx => / ^^ "## end-of-snippet" $$ /,
         snalex_rx   => / <after ^^ "# ID:" \s+> \S+ /,
     );
     $ok or say($CS), exit 1;
@@ -43,15 +43,14 @@ A corresponding snippets file:
 
 =head1 DESCRIPTION
 
-When learning new programming languages, frameworks, or techniques, I
-often try out short code snippets and like to keep them around for
-reference. But I find it rather inconvenient to have to rummage
-through dozens of tiny snippets, each in its own file, to retrieve or
-modify code examples or variants. This module helps me manage a bunch
-of more or less independent snippets all in the same file and to on
-demand extract them out to disk; some other code will need to take
-care of actually running, compiling, whatever, the resulting extracted
-snippets.
+When learning a programming language, I often try out short code
+snippets and like to keep them around for reference. But I find it
+rather inconvenient to have to rummage through dozens of tiny
+snippets, each in its own file, to retrieve or modify code examples or
+variants. This module helps me manage a bunch of more or less
+independent snippets all in the same file and to on demand extract
+them out to disk; some other code will need to take care of actually
+running, compiling, whatever, the resulting extracted snippets.
 
 Each snippet is identified by its snippet alias expression (snalex),
 made up of the non-whitespace characters immediately following the
@@ -74,38 +73,62 @@ will simply  be ignored.
 
 Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
 
+What
+----
     snalex          Main?           What
+    ------          -----           ----
                       $snips-dir/⟨file⟩
-    ------          ------          ----
-    SKIP                            Skip the snippet completely.
+    ------            ------
 
-    ⟨snal⟩          : ⋯/Σ           Single file in top level.
+These snalex`s are special:
+
+        Will skip the snippet completely.
+    SKIP
+    
+        Will ignore this and all other snippets until the end of the
+        file:
+    STOP
+
+Single file in top level:
+
+    ⟨snal⟩          : ⋯/Σ
+
         Example: --------------------------------------------
      sn0            : ⋯/sn0
 
-    ⟨snal⟩:Σ.raku   : ⋯/Σ.raku      Single file in top level.
+Single file in top level.
+
+    ⟨snal⟩:Σ.raku   : ⋯/Σ.raku
         Example: --------------------------------------------
      sn1:Σ.raku     : ⋯/sn1.raku
 
-    ⟨snal⟩          : ⋯/Σ           Multiple files in top level.
+Multiple files in top level.
+
+    ⟨snal⟩          : ⋯/Σ
     ⟨snal⟩::a         ⋯/a
         Example: --------------------------------------------
     sn2             : ⋯/sn2
     sn2::a            ⋯/a
 
-    ⟨snal⟩/         : ⋯/Σ/Σ         Single file in subdir.
+Single file in subdir.
+
+    ⟨snal⟩/         : ⋯/Σ/Σ
         Example: --------------------------------------------
     sn3/            : ⋯/sn3/sn3
 
-    sn3/4           : ⋯/sn4/a       Single file in subdir.
+Single file in subdir.
 
-    ⟨snal⟩/a/Σ      : ⋯/Σ/a/        Multiple files in subdir.
+    sn3/a           : ⋯/sn4/a
+
+Multiple files in subdir.
+
+    ⟨snal⟩/a/Σ      : ⋯/Σ/a/
     ⟨snal⟩//          ⋯/Σ/Σ
     ⟨snal⟩//b         ⋯/Σ/b
     ⟨snal⟩//c         ⋯/Σ/c
     ⟨snal⟩//d/e       ⋯/Σ/d/e
         Example: --------------------------------------------
-    sn5/a/Σ         : ⋯/sn5/a/      Multiple files in subdir.
+    sn5/a/Σ         : ⋯/sn5/a/
     sn5//             ⋯/sn5/sn5
     sn5//b            ⋯/sn5/b
     sn5//c            ⋯/sn5/c
