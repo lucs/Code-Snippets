@@ -3,10 +3,6 @@ use Test;
 use Test::Selector;
 use Code::Snippets;
 
-# Are these valid? Not sure (lucs, ☰2023-02-19.Sun):
-
-#     ◑⟨snal⟩::a/b       ⋯/a/b
-
 # --------------------------------------------------------------------
 t b1 => {
     for (
