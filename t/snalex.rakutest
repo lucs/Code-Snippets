@@ -10,39 +10,29 @@ use Code::Snippets;
 # --------------------------------------------------------------------
 t b1 => {
     for (
-        [|< f      f      >, True],
-        [|< f:g    g      >, True],
-        [|< f::    f      >, False],
-        [|< f::g   g      >, False],
-        [|< f/     Σ/Σ    >, True],
-        [|< f/g    Σ/g    >, True],
-        [|< f/g/   Σ/g/Σ  >, True],
-        [|< f//g/  Σ/g/Σ  >, False],
-        [|< f//    Σ/Σ    >, False],
-        [|< f//g   Σ/g    >, False],
-        [|< f/g/h  Σ/g/h  >, True],
-        [|< f//g/h Σ/g/h  >, False],
-
-       # [|< f:Σ    f      >, True],
-       # [|< f::    f      >, False],
-       # [|< f::g   g      >, False],
-       # [|< f/     Σ/Σ    >, True],
-       # [|< f/g    Σ/g    >, True],
-       # [|< f/g/   Σ/g/Σ  >, True],
-       # [|< f//g/  Σ/g/Σ  >, False],
-       # [|< f//    Σ/Σ    >, False],
-       # [|< f//g   Σ/g    >, False],
-       # [|< f/g/h  Σ/g/h  >, True],
-       # [|< f//g/h Σ/g/h  >, False],
+        [' f!f      f     ', True],
+        [' f!g      g     ', True],
+       # [' f!/f     f/f   ', True],
+       # [' f!/g     f/g   ', True],
+       # [' f!/g/&   f/g/f ', True],
+       # [' f!/g/h   f/g/h ', True],
+       # [' f/g      f/g   ', False],
+       # [' f/g/h    f/g/h ', False],
+       # [' f/g/&    f/g/f ', False],
     ) -> $test-data {
-            # Expected values.
-        my %exp = <snalex path main> Z=> @$test-data;
-        %exp<snal> = 'f';
-        %exp<path> ~~ s:g/ Σ /{%exp<snal>}/;
-        my $snalex = %exp<snalex>;
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
-        for %exp.kv -> $k, $v {
-            is($snalob."$k"(), $v, sprintf('%6s %8s %s', $snalex, $k, $v));
+        my %exp;
+        %exp<snam> = 'f';
+        my $snid-path;
+        my $req-snid;
+        ($snid-path, %exp<main>) = | @$test-data;
+        ($req-snid, %exp<path>) = $snid-path.comb: / \S+ /;
+        my $got-snid = Code::Snippets::Snid.from-str($req-snid);
+        for <snam path main> -> $attr {
+            is(
+                %exp{$attr},
+                $got-snid."$attr"(),
+                sprintf('%6s %8s %s', $req-snid, $attr, %exp{$attr}), 
+            );
         }
     }
 };
