@@ -2,14 +2,11 @@ unit class Code::Snippets:ver<0.2.0>:auth<zef:lucs>;
 
 #`{{
 
-Nomenclature
+Naming:
 
-    snip    : snippet
-    snip-bef: before-snippet marker
-    snip-aft: after-snippet marker
-    snal    : snippet alias
-    snalex  : snippet alias expression
-    snalob  : snippet alias object
+    snip : snippet
+    snam : snippet name
+    snid : snippet identifier
 
 }}
 
@@ -17,71 +14,81 @@ Nomenclature
 use IO::Glob;
 
 # --------------------------------------------------------------------
-my regex snal     { (<[\w]> <[\w.-]>*) };
-my regex filename { <[\w.-]>+ };
-my regex filepath { <[\w.-]> <[/\w.-]>* };
+my token snam { (\w <[\w.-]>*) };
+my token file { <-[/]>+ };
+my token path { [ '/' <file> ]+ };
+my token main { '!' };
 
-grammar Snalex::Grammar {
-    token snalex    { <snal> [<filenamed> | <subdired>]? }
-    token filenamed { ([ ':' | '::' ]) <filename>? }
-    token subdired  { ([ '/' | '//' ]) <filepath>? }
+grammar SnidGrammar {
+    token snid { ^ <snam> [
+        [ <main>  <file> ] |
+        [ <main>? <path> ]
+    ] $ }
 }
 
-class Snalob {...}
+class Snip {...}
 
-class Snalex::Actions {
-    has $.the_snal;
-    has $.main  = True;
-    has $.path;
-    method snalex ($/) {
-        make Snalob.new(
-            snalex => ~$/,
-            snal => ~$<snal>,
-            path => $.path // ~$<snal>,
-            main => $.main,
+class SnidGrammar::Actions {
+    my $snam;
+    my $main = False;
+    my $file;
+    my $path;
+
+    method snid ($/) {
+        make Snip.new(
+            snid => ~$/,
+            snam => $snam,
+            path => $path // $file,
+            main => $main,
         );
     }
-    method snal ($/) {
-        $!the_snal = ~$/;
+
+    method snam ($/) {
+        $snam = ~$/;
     }
-    method filenamed ($/) {
-        $!main  = False if $0 eq '::';
-        $!path = ~$<filename> if $<filename>;
+
+    method main ($/ = '') {
+        $main = ~$/ eq "!";
     }
-    method subdired ($/) {
-        $!main  = False if $0.substr(0, 2) eq '//';
-        if $<filepath> {
-            $!path = "$!the_snal/" ~ ~$<filepath>;
-            $!path ~= $!the_snal if ~$/.substr(*-1) eq '/';
-        }
-        else {
-            $!path = "$!the_snal/$!the_snal";
-        }
+
+    method file ($/) {
+        $file = ~$/;
     }
+
+    method path ($/) {
+        $path = $snam ~ ~$/;
+    }
+
 }
 
 # --------------------------------------------------------------------
-class Snalob {
-    has Str $.snalex;
-    has Str $.snal;
-    has Str $.path;
+class Snid {
+    has Str  $.snid;
+    has Str  $.snam;
+    has Str  $.path;
     has Bool $.main;
 
-    method from-str (Str $snalex) {
-        my $snalex-parsed = Snalex::Grammar.parse(
-            $snalex,
-            rule => 'snalex',
-            :actions(Snalex::Actions.new),
+    method from-str (Str $snid) {
+        my $self = SnidGrammar.parse(
+            $snid,
+            rule => 'snid',
+            :actions(SnidGrammar::Actions.new),
         );
-        return $snalex-parsed ?? $snalex-parsed.ast !! Nil;
+        return $self ?? $self.ast !! Nil;
     }
+
 }
 
 # --------------------------------------------------------------------
 class Snip {
+    has Str  $.snid;
+    has Str  $.snam;
+    has Str  $.path;
+    has Bool $.main;
     has Str  $.bef,
     has Str  $.txt,
     has Str  $.aft,
+
 }
 
 # --------------------------------------------------------------------
@@ -94,7 +101,7 @@ has $.snips-dir = "";
 
     #|{
         snips %
-            ⟨snal⟩ %
+            ⟨snam⟩ %
                 paths %
                     ⟨path⟩ $ ⟨Snip⟩
                 main $ ⟨path⟩
@@ -106,7 +113,7 @@ has %.snips;
 method build (
     Regex   :$snip-bef_rx,
     Regex   :$snip-aft_rx,
-    Regex   :$snalex_rx,
+    Regex   :$snid_rx,
     Str     :$snips-dir = "/tmp",
     Str     :$snips-file,
 ) {
@@ -129,27 +136,29 @@ method build (
             $<snip-aft> = <before [$snip-aft_rx \n] | $snip-bef_rx | $>
         /, :match
     ).map({
-        my $snip = Code::Snippets::Snip.new(
-            bef => ~.<snip-bef>,
-            txt => ~.<snip-txt>,
-            aft => ~.<snip-aft>,
-        );
-        my $snalex = ~($snip.bef ~~ / <$snalex_rx> /);
-        my $snalob = Snalob.from-str($snalex) orelse
-          return False, "Invalid snippet alias expression '$snalex'.";
+        my $bef = ~.<snip-bef>;
+        my $txt = ~.<snip-txt>;
+        my $aft = ~.<snip-aft>;
+        my $snid = ~($bef ~~ / <$snid_rx> /);
+        my $snip = Snip.from-str($snid) orelse
+          return False, "Invalid snippet id expression '$snid'.";
 
-        my $snal = $snalob.snal;
+       # my $snip = Code::Snippets::Snip.new(
+        my $snam = $snip.snam;
 
-        next if $snal eq 'SKIP';
-        last if $snal eq 'STOP';
+        next if $snam eq 'SKIP';
+        last if $snam eq 'STOP';
 
-        my $path = $snalob.path;
-        my $main = $snalob.main;
+        my $path = $snip.path;
+        my $main = $snip.main;
 
-        $self.snips{$snal}<paths>{$path}:exists and
-         return False, "Path '$path' already exists for snippet alias '$snal'.";
-        $self.snips{$snal}<paths>{$path} = $snip;
-        $self.snips{$snal}<main> = $path;
+        $self.snips{$snam}<paths>{$path}:exists and
+         return False, "Path '$path' already exists for snippet alias '$snam'.";
+        $snip.bef = $bef;
+        $snip.txt = $txt;
+        $snip.aft = $aft;
+        $self.snips{$snam}<paths>{$path} = $snip;
+        $self.snips{$snam}<main> = $path;
     });
     return True, $self;
 }
@@ -166,13 +175,13 @@ method snals (:$with-paths = False, *@snal-globs) {
 
     if $with-paths {
         @snals .= map({
-            my $snal = $_;
+            my $snam = $_;
             my $main-path = 
             my @snal-paths;
-            for self.snips{$snal}<paths>.keys -> $path {
+            for self.snips{$snam}<paths>.keys -> $path {
                 @snal-paths.push: sprintf "%s%s$path",
-                    $snal,
-                    (self.snips{$snal}<main> eq $path ?? ':' !! '-'),
+                    $snam,
+                    (self.snips{$snam}<main> eq $path ?? ':' !! '-'),
                 ;
             }
             | @snal-paths;
