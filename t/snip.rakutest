@@ -2,62 +2,34 @@ use Test;
 use Test::Selector;
 use Code::Snippets;
 
-
 # --------------------------------------------------------------------
-# Malformed snippet (no snim found), can't build Snip.
+sub make-code-snippets ($test-snips-name, $snips-data) {
+    my $dSnips = $*TMPDIR.path ~ "/$test-snips-name";
+    .d || .mkdir given $dSnips.IO;
+    my $fSnips = "$dSnips/$test-snips-name";
+    $fSnips.IO.spurt: $snips-data;
+    my ($ok, $CS) = Code::Snippets.build(
+        snips-file  => $fSnips,
+        snips-dir   => $dSnips,
+        snip-bef_rx => / ^^ "# SnipBeg " \N+ /,
+        snip-aft_rx => / ^^ "# SnipEnd" /,
+        snid_rx     => / <after ^^ "# SnipBeg" \s+> \S+ /,
+    );
+    return $ok, $CS;
+}
+    
+my ($ok, $CS) = make-code-snippets('snips-test01', Q:to/EoS/)
+    # SnipBeg s01!&
+    'Hello'.say;
+    # SnipEnd
+    moo
+    # SnipBeg s02!&
+    'World'.say;
+    # SnipEnd
+    EoS
+;
 
-# t e1 => {
-#     my ($ok, $got) = Code::Snippets::Snip.build("Moop\n\nabc\n", $snim);
-#     ok(! $ok, "Snip.build not ok.");
-#     like($got, / "Incorrect snippet " /, "Incorrect snim or snalex.");
-# };
-
-# --------------------------------------------------------------------
-# Invalid snalex, can't build Snip.
-
-# t e2 => {
-#     my $snip-bef_ʀ = / ^^ ID .*? /;
-#     my ($ok, $got) = Code::Snippets::Snip.build("ID f abc\n", $snip-bef_ʀ);
-#     ok(! $ok, "Snip.build not ok.");
-#     like($got, / "Invalid snippet alias expression" .* "..f" /, "Invalid snalex.");
-# };
-
-# --------------------------------------------------------------------
-# t a1 => {
-#     my $snip-bef_ʀ = / ^^ ID .*? /;
-#     for (
-#         [1, "ID f\n\nabc\n",      "f",     "f.ext", True, "ID f\n\nabc\n"],
-#         [2, "ID f\n\nabc\n",      "f",     "f",     True, "ID  .f\n\nabc\n"],
-#         [3, "ID f\n\nabc\n",      "f",     "f.ext", True, "abc\n"],
-#         [4, "ID f//g/\n\nabc\n",  "f",     "f/g/f", False, "abc\n"],
-#     ) -> $test-data {
-#         my ($i, $text, $exp_snal, $exp_path, $exp_main, $exp_text) = @$test-data;
-#         my ($ok, $snip) = Code::Snippets::Snip.build($text, $snip-bef_ʀ);
-#         die "Broken test, \$ok should have been True." unless $ok;
-#         is($snip.snal, $exp_snal, "$i: snal");
-#         is($snip.path, $exp_path, "$i: path");
-#         is($snip.main, $exp_main, "$i: main");
-#         is($snip.text, $exp_text, "$i: text");
-#     }
-# };
-
-# --------------------------------------------------------------------
-# Verify that 'fix-text' functions correctly.
-
-# t a2 => {
-#     my $fix-text = sub ($t is copy) {
-#         $t ~~ s:g/ (\d+) /<$0>/;
-#         return $t;
-#     };
-#     for (
-#         [1, "ID f\n\nabc 123 def\n",  "f.ext", True, "ID f\n\nabc <123> def\n"],
-#     ) -> $test-data {
-#         my ($i, $text, $exp_path, $exp_main, $exp_text) = @$test-data;
-#         my ($ok, $snip) = Code::Snippets::Snip.build($text, $snim, :$file-ext, :$fix-text);
-#         die "Broken test, \$ok should have been True." unless $ok;
-#         is($snip.text, $exp_text, "$i: text");
-#     }
-# };
+say $CS.snals.join: "\n";
 
 # --------------------------------------------------------------------
 done-testing;
