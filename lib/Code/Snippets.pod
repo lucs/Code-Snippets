@@ -16,7 +16,7 @@ Main program:
         snips-dir   => ⟨some dir⟩,
         snip-bef_rx => / ^^ ｢## ｣ '-'+ "\n# ID:" /,
         snip-aft_rx => / ^^ "## end-of-snippet" $$ /,
-        snalex_rx   => / <after ^^ "# ID:" \s+> \S+ /,
+        snip-id_rx   => / <after ^^ "# ID:" \s+> \S+ /,
     );
     $ok or say($CS), exit 1;
 
@@ -64,12 +64,12 @@ no colon, the alias is used to build the file name.
 In the example, each snippet will start at the line immediately
 following a line matching / ^^ ｢# ｣ '-'+ "\n# ID:" / and will extend
 up to and stop right before the next such match, or the first line
-that matches / ^^ "end-of-snippet $$ /, or the end of the file.
+that matches / ^^ "## end-of-snippet $$ /, or the end of the file.
 
 A snippet alias of "SKIP" is special and the corresponding snippet
 will simply  be ignored.
 
-=head1 Snip alias expressions (snalex)
+=head1 Snippet id 
 
     # --------------------
     snip1!&
@@ -88,7 +88,7 @@ What
                       $snips-dir/⟨file⟩
     ------            ------
 
-These snalex`s are special:
+These snippet id are special:
 
         Will skip the snippet completely.
     SKIP
