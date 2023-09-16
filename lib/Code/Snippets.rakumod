@@ -26,7 +26,7 @@ grammar SnidGrammar {
     ] $ }
 }
 
-class Snip {...}
+class Snid {...}
 
 class SnidGrammar::Actions {
     my $snam;
@@ -35,11 +35,12 @@ class SnidGrammar::Actions {
     my $path;
 
     method snid ($/) {
-        make Snip.new(
+        ($path //= $file) .= subst('&', $snam, :g);
+        make Snid.new(
             snid => ~$/,
-            snam => $snam,
-            path => $path // $file,
-            main => $main,
+            :$snam,
+            :$path,
+            :$main,
         );
     }
 
@@ -81,10 +82,7 @@ class Snid {
 
 # --------------------------------------------------------------------
 class Snip {
-    has Str  $.snid;
-    has Str  $.snam;
-    has Str  $.path;
-    has Bool $.main;
+    has Snid $.snid;
     has Str  $.bef,
     has Str  $.txt,
     has Str  $.aft,
@@ -111,11 +109,11 @@ has %.snips;
 
 # --------------------------------------------------------------------
 method build (
-    Regex   :$snip-bef_rx,
-    Regex   :$snip-aft_rx,
-    Regex   :$snid_rx,
-    Str     :$snips-dir = "/tmp",
-    Str     :$snips-file,
+    Regex   :$snip-bef_rx!,
+    Regex   :$snip-aft_rx!,
+    Regex   :$snid_rx!,
+    Str     :$snips-dir!,
+    Str     :$snips-file!,
 ) {
     return False, "Can't read '$snips-file'." unless $snips-file.IO.f;
 
@@ -139,24 +137,26 @@ method build (
         my $bef = ~.<snip-bef>;
         my $txt = ~.<snip-txt>;
         my $aft = ~.<snip-aft>;
-        my $snid = ~($bef ~~ / <$snid_rx> /);
-        my $snip = Snip.from-str($snid) orelse
-          return False, "Invalid snippet id expression '$snid'.";
+        my $snid-txt = ~($bef ~~ / <$snid_rx> /);
+        my $snid = Snid.from-str($snid-txt) orelse
+          return False, "Invalid snippet id expression '$snid-txt'.";
 
-       # my $snip = Code::Snippets::Snip.new(
-        my $snam = $snip.snam;
+        my $snip = Code::Snippets::Snip.new:
+            :$snid,
+            :$bef,
+            :$txt,
+            :$aft,
+        ;
+        my $snam = $snip.snid.snam;
 
         next if $snam eq 'SKIP';
         last if $snam eq 'STOP';
 
-        my $path = $snip.path;
-        my $main = $snip.main;
+        my $path = $snip.snid.path;
+        my $main = $snip.snid.main;
 
         $self.snips{$snam}<paths>{$path}:exists and
          return False, "Path '$path' already exists for snippet alias '$snam'.";
-        $snip.bef = $bef;
-        $snip.txt = $txt;
-        $snip.aft = $aft;
         $self.snips{$snam}<paths>{$path} = $snip;
         $self.snips{$snam}<main> = $path;
     });
