@@ -4,68 +4,63 @@ use Test::Selector;
 use Code::Snippets;
 
 # --------------------------------------------------------------------
-t b1 => {
-    for (
-        [' f!f      f     ', True],
-        [' f!g      g     ', True],
-       # [' f!/f     f/f   ', True],
-       # [' f!/g     f/g   ', True],
-       # [' f!/g/&   f/g/f ', True],
-       # [' f!/g/h   f/g/h ', True],
-       # [' f/g      f/g   ', False],
-       # [' f/g/h    f/g/h ', False],
-       # [' f/g/&    f/g/f ', False],
-    ) -> $test-data {
-        my %exp;
-        %exp<snam> = 'f';
-        my $snid-path;
-        my $req-snid;
-        ($snid-path, %exp<main>) = | @$test-data;
-        ($req-snid, %exp<path>) = $snid-path.comb: / \S+ /;
+sub test-good-snid (
+    $tid,
+    $req-snid,
+    $exp-path,
+    Bool $exp-main,
+) {
+    t $tid => {
+        my $exp-snam = 'f';
         my $got-snid = Code::Snippets::Snid.from-str($req-snid);
         for <snam path main> -> $attr {
+            my $exp-attr;
+            EVAL "\$exp-attr = \$exp-{$attr}";
             is(
-                %exp{$attr},
+                $exp-attr,
                 $got-snid."$attr"(),
-                sprintf('%6s %8s %s', $req-snid, $attr, %exp{$attr}), 
+                sprintf('%6s %8s %s', $req-snid, $attr, $exp-attr),
             );
         }
     }
-};
+}
+
+test-good-snid | < g01 f!f    f     >, True;
+test-good-snid | < g02 f!g    g     >, True;
+test-good-snid | < g03 f!/f   f/f   >, True;
+test-good-snid | < g04 f!/g   f/g   >, True;
+test-good-snid | < g05 f!/g/& f/g/f >, True;
+test-good-snid | < g06 f!/g/h f/g/h >, True;
+test-good-snid | < g07 f/g    f/g   >, False;
+test-good-snid | < g08 f/g/h  f/g/h >, False;
+test-good-snid | < g09 f/g/&  f/g/f >, False;
+test-good-snid | < g10 f/&/g  f/f/g >, False;
 
 # --------------------------------------------------------------------
-t b2 => {
-    for (|<
-       f|/
-       f/|
-       f||
-       f///
-       f:/
-       f/:
-       f|:
-       f:|
-       f::/
-       f:/:
-    >) -> $snalex {
-        next if $snalex.substr(0, 1) eq '#';
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
-        ok(! $snalob, "Invalid snalex '$snalex'.")
+sub test-bad-snid (
+    $tid,
+    $req-snid,
+) {
+    t $tid => {
+        throws-like(
+            {
+                Code::Snippets::Snid.from-str($req-snid);
+            },
+            Code::Snippets::SnidX,
+            "Testing bad snid.",
+            snid => $req-snid,
+        );
     }
 }
 
-# --------------------------------------------------------------------
-t a2 => {
-    for (|<
-       .-.foo
-       @foo
-        ..foo
-       --foo
-    >) -> $snalex {
-        next if $snalex.substr(0, 1) eq '#';
-        my $snalob = Code::Snippets::Snalob.from-str($snalex);
-        ok(! $snalob, "Invalid snalex '$snalex'.")
-    }
-}
+test-bad-snid | < b01 f|/ >;
+test-bad-snid | < b03 f|| >;
+test-bad-snid | < b04 f/// >;
+test-bad-snid | < b05 f:/ >;
+test-bad-snid | < b06 f|: >;
+test-bad-snid | < b07 f:| >;
+test-bad-snid | < b08 f::/ >;
+test-bad-snid | < b09 f:/: >;
 
 done-testing;
 
