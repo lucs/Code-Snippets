@@ -28,9 +28,16 @@ grammar SnidGrammar {
 
 class Snid {...}
 
+class SnidX is Exception {
+    has $.snid;
+    method message {
+        "Bad snippet id '{$.snid}'.";
+    }
+}
+
 class SnidGrammar::Actions {
     my $snam;
-    my $main = False;
+    my $main;
     my $file;
     my $path;
 
@@ -46,6 +53,10 @@ class SnidGrammar::Actions {
 
     method snam ($/) {
         $snam = ~$/;
+            # Reset values.
+        $main = False;
+        $file = Nil;
+        $path = Nil;
     }
 
     method main ($/ = '') {
@@ -75,7 +86,8 @@ class Snid {
             rule => 'snid',
             :actions(SnidGrammar::Actions.new),
         );
-        return $self ?? $self.ast !! Nil;
+        SnidX.new(:$snid).throw unless $self.defined;
+        return $self.ast;
     }
 
 }
@@ -86,25 +98,24 @@ class Snip {
     has Str  $.bef,
     has Str  $.txt,
     has Str  $.aft,
-
 }
 
 # --------------------------------------------------------------------
 
-    #|{The file that holds the source snippets.}
+    # The file that holds the source snippets.
 has $.snips-file = "";
 
-    #|{The directory in which the extracted snippets will be updated.}
+    # The directory in which the extracted snippets will be placed.
 has $.snips-dir = "";
 
-    #|{
+    #`(
         snips %
             ⟨snam⟩ %
                 paths %
                     ⟨path⟩ $ ⟨Snip⟩
                 main $ ⟨path⟩
 
-    }
+    )
 has %.snips;
 
 # --------------------------------------------------------------------
@@ -118,7 +129,7 @@ method build (
     return False, "Can't read '$snips-file'." unless $snips-file.IO.f;
 
         # Make sure that the destination directory is writable or that
-        # is can be created as such.
+        # it can be created as such.
     given $snips-dir.IO {
         ( .d && .w)
          or ( ! .e && .mkdir && .rmdir)
@@ -135,8 +146,8 @@ method build (
         /, :match
     ).map({
         my $bef = ~.<snip-bef>;
-        my $txt = ~.<snip-txt>;
-        my $aft = ~.<snip-aft>;
+        my $txt = ~.<snip-txt> // '';
+        my $aft = ~.<snip-aft> // '';
         my $snid-txt = ~($bef ~~ / <$snid_rx> /);
         my $snid = Snid.from-str($snid-txt) orelse
           return False, "Invalid snippet id expression '$snid-txt'.";
@@ -176,7 +187,6 @@ method snals (:$with-paths = False, *@snal-globs) {
     if $with-paths {
         @snals .= map({
             my $snam = $_;
-            my $main-path = 
             my @snal-paths;
             for self.snips{$snam}<paths>.keys -> $path {
                 @snal-paths.push: sprintf "%s%s$path",
