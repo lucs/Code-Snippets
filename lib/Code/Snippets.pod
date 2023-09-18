@@ -79,6 +79,8 @@ will simply  be ignored.
     snip4!/&.raku
     snip4/baz.rakumod
 
+    $CS.extract: :content(sub ($a, $b, $c) {$b}), @snal-globs;
+
 Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
 
 What
