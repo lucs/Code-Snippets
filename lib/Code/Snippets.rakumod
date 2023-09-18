@@ -28,6 +28,11 @@ grammar SnidGrammar {
 
 class Snid {...}
 
+class X is Exception {
+    has $.msg;
+    method message { $.msg }
+}
+
 class SnidX is Exception {
     has $.snid;
     method message {
@@ -126,31 +131,32 @@ method build (
     Str     :$snips-dir!,
     Str     :$snips-file!,
 ) {
-    return False, "Can't read '$snips-file'." unless $snips-file.IO.f;
+    X.new(msg => "Can't read file '$snips-file'.").throw
+     unless .f && .r given $snips-file.IO;
 
         # Make sure that the destination directory is writable or that
         # it can be created as such.
     given $snips-dir.IO {
-        ( .d && .w)
+        (.d && .w)
          or ( ! .e && .mkdir && .rmdir)
-         or return False, "Can't extract snips to <$snips-dir>";
+         or X.new(msg => "Can't extract snips to <$snips-dir>").throw;
     }
 
     my $self = Code::Snippets.new(:$snips-dir, :$snips-file);
     my $snips-text = slurp($snips-file);
     $snips-text.comb(
         /
-            $<snip-bef> = [$snip-bef_rx .*? \n ]
+            $<snip-bef> = $snip-bef_rx
             $<snip-txt> = .*?
-            $<snip-aft> = <before [$snip-aft_rx \n] | $snip-bef_rx | $>
+            $<snip-aft> = <before $snip-aft_rx | $snip-bef_rx | $>
         /, :match
     ).map({
         my $bef = ~.<snip-bef>;
         my $txt = ~.<snip-txt> // '';
         my $aft = ~.<snip-aft> // '';
         my $snid-txt = ~($bef ~~ / <$snid_rx> /);
-        my $snid = Snid.from-str($snid-txt) orelse
-          return False, "Invalid snippet id expression '$snid-txt'.";
+        my $snid = Snid.from-str($snid-txt)
+         orelse X.new(msg => "Invalid snippet id '$snid-txt'.").throw;
 
         my $snip = Code::Snippets::Snip.new:
             :$snid,
@@ -166,50 +172,62 @@ method build (
         my $path = $snip.snid.path;
         my $main = $snip.snid.main;
 
-        $self.snips{$snam}<paths>{$path}:exists and
-         return False, "Path '$path' already exists for snippet alias '$snam'.";
+        $self.snips{$snam}<paths>{$path}:exists and X.new(
+            msg => "Path '$path' already exists for snippet alias '$snam'."
+        ).throw;
         $self.snips{$snam}<paths>{$path} = $snip;
         $self.snips{$snam}<main> = $path;
     });
-    return True, $self;
+    return $self;
 }
 
 # --------------------------------------------------------------------
-method snals (:$with-paths = False, *@snal-globs) {
-    @snal-globs.push('*') unless @snal-globs.elems;
+method snams (:$with-paths = False, *@snam-globs) {
+    @snam-globs.push('*') unless @snam-globs.elems;
 
-    my @snals;
-    for @snal-globs -> $glob {
-        @snals.push: | self.snips.keys.grep:{ $_ ~~ glob($glob) };
+    my @snams;
+    for @snam-globs -> $glob {
+        @snams.push: | self.snips.keys.grep:{ $_ ~~ glob($glob) };
     }
-    @snals .= sort;
+    @snams .= sort;
 
     if $with-paths {
-        @snals .= map({
+        @snams .= map({
             my $snam = $_;
-            my @snal-paths;
+            my @snam-paths;
             for self.snips{$snam}<paths>.keys -> $path {
-                @snal-paths.push: sprintf "%s%s$path",
+                @snam-paths.push: sprintf "%s%s$path",
                     $snam,
                     (self.snips{$snam}<main> eq $path ?? ':' !! '-'),
                 ;
             }
-            | @snal-paths;
+            | @snam-paths;
         });
     }
 
-    return @snals;
+    return @snams;
 }
 
 # --------------------------------------------------------------------
-method extract ($snal-want) {
-    for self.snips.keys -> $snal-got {
-        next unless $snal-got eq $snal-want;
-        for self.snips{$snal-want}<paths>.keys -> $path {
+method extract (
+    :&content = sub (
+        :$append = False,
+        $bef,
+        $txt,
+        $aft,
+    ) { return $bef ~ $txt },
+    *@snam-globs,
+) {
+    my @snams;
+    for @snam-globs -> $glob {
+        @snams.push: | self.snips.keys.grep:{ $_ ~~ glob($glob) };
+    }
+    for @snams -> $snam {
+        for self.snips{$snam}<paths>.keys -> $path {
             my $file = $.snips-dir ~ "/" ~ $path;
             $file.IO.dirname.IO.mkdir;
-            my $snip = self.snips{$snal-want}<paths>{$path};
-            $file.IO.spurt: .bef ~ .txt given $snip;
+            my $snip = self.snips{$snam}<paths>{$path};
+            $file.IO.spurt: &content(.bef, .txt, .aft) given $snip;
         }
     }
 
