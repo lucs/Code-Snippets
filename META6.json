@@ -5,7 +5,7 @@
   "depends": [
     "IO::Glob"
   ],
-  "description" : "Manage code snippets",
+  "description" : "Extract code snippets contained in a single file",
   "license" : "Artistic-2.0",
   "name": "Code::Snippets",
   "provides": {
@@ -14,7 +14,8 @@
   "resources": [
   ],
   "test-depends": [
-    "Test::Selector"
+    "Test::Selector",
+    "File::Temp"
   ],
   "version": "0.2.0"
 }
