@@ -1,0 +1,56 @@
+use Test;
+use Test::Selector;
+use File::Temp;
+use Code::Snippets;
+
+# --------------------------------------------------------------------
+sub test-bad-constructor (
+    $excep-type,
+    $msg,
+    &constructor,
+) {
+    throws-like(
+        { constructor() },
+        $excep-type,
+        "Testing bad Code::Snippets constructor.",
+        msg => $msg,
+    );
+}
+
+# --------------------------------------------------------------------
+t b1 => {
+    test-bad-constructor(
+        Code::Snippets::X::NoSuchSnipsFile,
+        "Can't read file <no/such/file>.",
+        sub {
+            Code::Snippets.build(
+                snips-file => 'no/such/file',
+                snips-dir  => 'dont_care',
+                snip-bef   => / dont_care /,
+                snip-aft   => / dont_care /,
+                snip-id    => / dont_care /,
+            );
+        }
+    );
+}
+# --------------------------------------------------------------------
+t b2 => {
+    my $tempfile = tempfile[0];
+    test-bad-constructor(
+        Code::Snippets::X::CantWriteToDir,
+        "Can't extract snips to </no/such/dir>.",
+        sub {
+            Code::Snippets.build(
+                snips-file => ~$tempfile,
+                snips-dir  => '/no/such/dir',
+                snip-bef   => / dont_care /,
+                snip-aft   => / dont_care /,
+                snip-id    => / dont_care /,
+            );
+        }
+    );
+}
+
+# --------------------------------------------------------------------
+done-testing;
+
