@@ -5,8 +5,8 @@ unit class Code::Snippets:ver<0.2.0>:auth<zef:lucs>;
 Naming:
 
     snip : snippet
-    snam : snippet name
-    snid : snippet identifier
+    snam : snippet name, ⦃eg01⦄
+    snid : snippet identifier, ⦃eg01!/main.raku⦄
 
 }}
 
@@ -19,27 +19,30 @@ my token file { <-[/]>+ };
 my token path { [ '/' <file> ]+ };
 my token main { '!' };
 
-grammar SnidGrammar {
-    token snid { ^ <snam> [
-        [ <main>  <file> ] |
-        [ <main>? <path> ]
-    ] $ }
-}
-
-class Snid {...}
-
 class X is Exception {
     has $.msg;
     method message { $.msg }
 }
 
-class SnidX is Exception {
+class X::NoSuchSnipsFile is X { }
+class X::CantWriteToDir is X { }
+class X::BadSnid is X {
     has $.snid;
+    has $.other-msg;
     method message {
-        "Bad snippet id '{$.snid}'.";
+        $.other-msg // "Bad snippet id '{$.snid}'.";
     }
 }
 
+grammar SnidGrammar {
+    token snid { ^ <snam> [
+        [ <main>  <file> ] | [ <main>? <path> ]
+    ] $ }
+}
+
+class Snid {...}
+
+# --------------------------------------------------------------------
 class SnidGrammar::Actions {
     my $snam;
     my $main;
@@ -91,7 +94,7 @@ class Snid {
             rule => 'snid',
             :actions(SnidGrammar::Actions.new),
         );
-        SnidX.new(:$snid).throw unless $self.defined;
+        X::BadSnid.new(:$snid).throw unless $self.defined;
         return $self.ast;
     }
 
@@ -114,6 +117,8 @@ has $.snips-file = "";
 has $.snips-dir = "";
 
     #`(
+        The snippets found in the snippets file.
+
         snips %
             ⟨snam⟩ %
                 paths %
@@ -131,15 +136,18 @@ method build (
     Str     :$snips-dir!,
     Str     :$snips-file!,
 ) {
-    X.new(msg => "Can't read file '$snips-file'.").throw
-     unless .f && .r given $snips-file.IO;
+    X::NoSuchSnipsFile.new(
+        msg => "Can't read file <$snips-file>."
+    ).throw unless .f && .r given $snips-file.IO;
 
         # Make sure that the destination directory is writable or that
         # it can be created as such.
     given $snips-dir.IO {
         (.d && .w)
-         or ( ! .e && .mkdir && .rmdir)
-         or X.new(msg => "Can't extract snips to <$snips-dir>").throw;
+        or (! .e && .mkdir && .rmdir)
+        or X::CantWriteToDir.new(
+            msg => "Can't extract snips to <$snips-dir>."
+        ).throw;
     }
 
     my $self = Code::Snippets.new(:$snips-dir, :$snips-file);
@@ -155,8 +163,13 @@ method build (
         my $txt = ~.<snip-txt> // '';
         my $aft = ~.<snip-aft> // '';
         my $snid-txt = ~($bef ~~ / <$snid_rx> /);
-        my $snid = Snid.from-str($snid-txt)
-         orelse X.new(msg => "Invalid snippet id '$snid-txt'.").throw;
+        try my $snid = Snid.from-str($snid-txt);
+        if $! ~~ X::BadSnid {
+            X::BadSnid.new(
+                snid => $snid-txt,
+                other-msg => "Bad snippet id <$snid-txt> in file <$snips-file>."
+            ).throw;
+        }
 
         my $snip = Code::Snippets::Snip.new:
             :$snid,
@@ -211,10 +224,10 @@ method snams (:$with-paths = False, *@snam-globs) {
 # --------------------------------------------------------------------
 method extract (
     :&content = sub (
-        :$append = False,
         $bef,
         $txt,
         $aft,
+        :$append = False,
     ) { return $bef ~ $txt },
     *@snam-globs,
 ) {
