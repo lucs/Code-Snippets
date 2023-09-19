@@ -1,4 +1,3 @@
-use v6;
 use Test;
 use Test::Selector;
 use Code::Snippets;
@@ -46,9 +45,10 @@ sub test-bad-snid (
             {
                 Code::Snippets::Snid.from-str($req-snid);
             },
-            Code::Snippets::SnidX,
+            Code::Snippets::X::BadSnid,
             "Testing bad snid.",
             snid => $req-snid,
+           # msg => "foo",
         );
     }
 }
