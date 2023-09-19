@@ -10,36 +10,36 @@ Main program:
 
     use Code::Snippets;
 
-        # To handle Raku snippets for example.
-    (my $ok, $CS) = Code::Snippets.build(
+    my $CS = Code::Snippets.build(
         snips-file  => ⟨some file⟩,
         snips-dir   => ⟨some dir⟩,
-        snip-bef_rx => / ^^ ｢## ｣ '-'+ "\n# ID:" /,
+        snip-bef_rx => / ^^ "## ID: " .+? \n\n /,
         snip-aft_rx => / ^^ "## end-of-snippet" $$ /,
-        snip-id_rx   => / <after ^^ "# ID:" \s+> \S+ /,
+        snip-id_rx  => / <after ^^ "# ID:" \s+> \S+ /,
     );
-    $ok or say($CS), exit 1;
 
 A corresponding snippets file:
 
-    Here are some Raku snippets.
+    This text precedes any snippet.
 
-    ## ID: baz Bla bla
+    ## ID: baz/!& Bla bla
 
     say "This is snippet 'baz'.";
 
-    end-of-snippet
+    ## end-of-snippet
 
-    This text will be ignored.
+    This text will be ignored, it's between two snippets.
 
-    ## ID: SKIP
+    ## ID: SKIP!&
 
     This snippet will be ignored.
-    ...
 
-    ## ID: foo
+    ## ID: foo/!&
 
     say 42;
+
+Some operations that can be performed:
+
 
 =head1 DESCRIPTION
 
@@ -52,9 +52,12 @@ independent snippets all in the same file and to on demand extract
 them out to disk; some other code will need to take care of actually
 running, compiling, whatever, the resulting extracted snippets.
 
-Each snippet is identified by its snippet alias expression (snalex),
+Each snippet is identified by a string
+
 made up of the non-whitespace characters immediately following the
-snippet marker ($self.snim). This expression holds the snippet alias
+snippet marker 
+
+This expression holds the snippet alias
 and information to build the file name the snippet will be extracted
 to.
 
@@ -66,14 +69,24 @@ following a line matching / ^^ ｢# ｣ '-'+ "\n# ID:" / and will extend
 up to and stop right before the next such match, or the first line
 that matches / ^^ "## end-of-snippet $$ /, or the end of the file.
 
-A snippet alias of "SKIP" is special and the corresponding snippet
+Any snippet named "SKIP" is special and the corresponding snippet
 will simply  be ignored.
 
 =head1 Snippet id 
 
-    # --------------------
-    snip1!&
+The simplest snippet id looks like this:
+
+    ⟨snippet name⟩!&
+
+For example:
+
+    eg01!&
+
+That would extract the snippet to a file named 'eg01' in the 
+
     snip2!&.raku
+
+
     snip3!/&
     snip3/baz.rakumod
     snip4!/&.raku
