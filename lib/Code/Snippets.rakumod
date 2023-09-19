@@ -130,9 +130,9 @@ has %.snips;
 
 # --------------------------------------------------------------------
 method build (
-    Regex   :$snip-bef_rx!,
-    Regex   :$snip-aft_rx!,
-    Regex   :$snid_rx!,
+    Regex   :$snip-bef!,
+    Regex   :$snip-aft!,
+    Regex   :$snip-id!,
     Str     :$snips-dir!,
     Str     :$snips-file!,
 ) {
@@ -154,15 +154,15 @@ method build (
     my $snips-text = slurp($snips-file);
     $snips-text.comb(
         /
-            $<snip-bef> = $snip-bef_rx
+            $<snip-bef> = $snip-bef
             $<snip-txt> = .*?
-            $<snip-aft> = <before $snip-aft_rx | $snip-bef_rx | $>
+            $<snip-aft> = <before $snip-aft | $snip-bef | $>
         /, :match
     ).map({
         my $bef = ~.<snip-bef>;
         my $txt = ~.<snip-txt> // '';
         my $aft = ~.<snip-aft> // '';
-        my $snid-txt = ~($bef ~~ / <$snid_rx> /);
+        my $snid-txt = ~($bef ~~ / <$snip-id> /);
         try my $snid = Snid.from-str($snid-txt);
         if $! ~~ X::BadSnid {
             X::BadSnid.new(
