@@ -1,0 +1,11 @@
+#!/bin/bash
+
+    # Adjust this to wherever you happened to have placed the relevant
+    # files.
+dExample=/home/lucs/prj/r/Code-Snippets.dir/Code-Snippets.Raku/example
+
+$dExample/snipraku.raku \
+    $dExample/snips.raku \
+    /tmp/snips-raku-example \
+    $*
+
