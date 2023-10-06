@@ -2,6 +2,9 @@ Revision history for Code-Snippets
 
 {{$NEXT}}
 
+0.3.1
+    - Replaced a committed symlink with the real file.
+
 0.3.0
     - Rework everything, again.
 

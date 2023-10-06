@@ -1,4 +1,4 @@
-unit class Code::Snippets:ver<0.3.0>:auth<zef:lucs>;
+unit class Code::Snippets:ver<0.3.1>:auth<zef:lucs>;
 
 #`{{
 
