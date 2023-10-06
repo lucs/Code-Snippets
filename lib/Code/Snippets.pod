@@ -11,16 +11,17 @@ Main program:
     use Code::Snippets;
 
     my $CS = Code::Snippets.build(
-        snips-file => ⟨some file⟩,
-        snips-dir  => ⟨some dir⟩,
+        snips-file => ⟨some file containing the snippets⟩,
+        snips-dir  => ⟨some directory in which to extract the snippets⟩,
         snip-bef   => ⟨regex matching what comes before a snippet⟩,
         snip-aft   => ⟨regex matching what comes after a snippet⟩,
         snip-id    => ⟨regex matching a snippet identifier⟩,
     );
 
-A snippets file, holding arbitrary text and snippets:
+A snippets file holds arbitrary text and snippets and could be
+structured like this:
 
-    ⟨Arbitrary text⟩
+    ⟨Optional arbitrary text⟩
     ⟨A snippet⟩
     ⟨More arbitrary text⟩
     ⟨Another snippet⟩
@@ -32,14 +33,21 @@ A snippets file, holding arbitrary text and snippets:
 
 Each snippet is structured like this:
 
-    ⟨What comes before the snippet⟩
+    ⟨What comes before the snippet, including the snippet id⟩
     ⟨The snippet itself⟩
     ⟨What comes after the snippet⟩
 
 =head1 DESCRIPTION
 
-When learning a programming language, I often try out short code
-snippets and like to keep them around for reference. But I find it
+When I started learning Raku, I often tried out short code snippets in
+the REPL to see how they behaved. It took no time at all for those
+snippets to become big enough to need to have them in a file I could
+run independently. Then sometimes I wanted to try out stuff that
+required more than one file (to see how 'use' statements were resolved
+for example). I also liked to keep those snippet files around for
+reference or for trying out different things later.
+
+But I find it
 rather inconvenient to have to rummage through dozens of tiny
 snippets, each in its own file, to retrieve or modify code examples or
 variants. This module helps me manage a bunch of more or less
@@ -47,131 +55,54 @@ independent snippets all in the same file and to on demand extract
 them out to disk; some other code will need to take care of actually
 running, compiling, whatever, the resulting extracted snippets.
 
-Each snippet is identified by a string
+=head1 Snippet files
 
-made up of the non-whitespace characters immediately following the
-snippet marker 
 
-This expression holds the snippet alias
-and information to build the file name the snippet will be extracted
-to.
+=head1 Snippet name
 
-The alias and the file name info are separated by a colon; if there is
-no colon, the alias is used to build the file name.
+A snippet has a name, which we will call a "snam"; for example,
+"eg01". A code snippet often fits in a single file that can be run.
+Here is an extremely trivial example of a Raku snippet:
 
-In the example, each snippet will start at the line immediately
-following a line matching / ^^ ｢# ｣ '-'+ "\n# ID:" / and will extend
-up to and stop right before the next such match, or the first line
-that matches / ^^ "## end-of-snippet $$ /, or the end of the file.
+    say "Hello world."
 
-Any snippet named "SKIP" is special and the corresponding snippet
-will simply  be ignored.
 
-=head1 Snippet id 
+=head1 Snippet name
 
 The simplest snippet id looks like this:
 
-    ⟨snippet name⟩!&
+    ⟨snam⟩!&
 
 For example:
 
     eg01!&
 
-That would extract the snippet to a file named 'eg01' in the 
+That would extract snippets to a file named 'eg01' in the 
 
-    snip2!&.raku
-
-
-    snip3!/&
-    snip3/baz.rakumod
-    snip4!/&.raku
-    snip4/baz.rakumod
-
-    $CS.extract: :content(sub ($a, $b, $c) {$b}), @snal-globs;
-
-Example snalex`s, where ｢Σ｣ represents the snippet alias, ⟨snal⟩:
-
-What
-----
-    snalex          Main?           What
-    ------          -----           ----
-                      $snips-dir/⟨file⟩
-    ------            ------
+    $CS.extract: :content(sub ($a, $b, $c) {$b}), @snam-globs;
 
 These snippet id are special:
 
         Will skip the snippet completely.
-    SKIP
+    SKIP!&
     
         Will ignore this and all other snippets until the end of the
         file:
-    STOP
+    STOP!&
 
 Single file in top level:
 
-    ⟨snal⟩          : ⋯/Σ
+    ⟨snam⟩!&    : ⟨snips-dir⟩/⟨snam⟩
+    ⟨snam⟩!&.sh : ⟨snips-dir⟩/⟨snam⟩.sh
 
-        Example: --------------------------------------------
-     sn0            : ⋯/sn0
+    sn0!&       : ⋯/sn0
+    sn1!&.sh    : ⋯/sn1.sh
+    snip3!/&
 
-Single file in top level.
+Files in subdir ⟨snam⟩:
 
-    ⟨snal⟩:Σ.raku   : ⋯/Σ.raku
-        Example: --------------------------------------------
-     sn1:Σ.raku     : ⋯/sn1.raku
-
-Multiple files in top level.
-
-    ⟨snal⟩          : ⋯/Σ
-    ⟨snal⟩::a         ⋯/a
-        Example: --------------------------------------------
-    sn2             : ⋯/sn2
-    sn2::a            ⋯/a
-
-Single file in subdir.
-
-    ⟨snal⟩/         : ⋯/Σ/Σ
-        Example: --------------------------------------------
-    sn3/            : ⋯/sn3/sn3
-
-Single file in subdir.
-
-    sn3/a           : ⋯/sn4/a
-
-Multiple files in subdir.
-
-    ⟨snal⟩/a/Σ      : ⋯/Σ/a/
-    ⟨snal⟩//          ⋯/Σ/Σ
-    ⟨snal⟩//b         ⋯/Σ/b
-    ⟨snal⟩//c         ⋯/Σ/c
-    ⟨snal⟩//d/e       ⋯/Σ/d/e
-        Example: --------------------------------------------
-    sn5/a/Σ         : ⋯/sn5/a/
-    sn5//             ⋯/sn5/sn5
-    sn5//b            ⋯/sn5/b
-    sn5//c            ⋯/sn5/c
-    sn5//d/e          ⋯/sn5/d/e
-
-        Invalid: duplicates, or too many or no main indicated.
-        (Each column is a separate case.)
-    ⟨snal⟩:a    ⟨snal⟩:     ⟨snal⟩::a   ⟨snal⟩//a   ⟨snal⟩/
-    ⟨snal⟩::b   ⟨snal⟩:a    ⟨snal⟩::    ⟨snal⟩//b   ⟨snal⟩/a
-    ⟨snal⟩:a
-        Example: --------------------------------------------
-    snip01:a    snip02:     snip03::a   snip04//a   snip05/
-    snip01::b   snip02:a    snip03::    snip04//b   snip05/a
-    snip01:a
-
-Example snippet aliases and their corresponding file names, with the
-main file indicated by ｢:｣:
-
-    eg1::Foo.rakumod     ⋯/Foo.rakumod
-    eg1::Foo.t           ⋯/Foo.t
-    eg1:Foo            : ⋯/Foo.raku
-
-    eg2/Foo.t          : ⋯/eg2/Foo.t
-    eg2//Foo.rakumod     ⋯/eg2/Foo.rakumod
-    eg2//Foo             ⋯/eg2/Foo.raku
+    ⟨snam⟩!/&.raku     : ⟨snips-dir⟩/⟨snam⟩/⟨snam⟩.raku
+    ⟨snam⟩/Baz.rakumod : ⟨snips-dir⟩/⟨snam⟩/Baz.rakumod
 
 =head1 AUTHOR
 
