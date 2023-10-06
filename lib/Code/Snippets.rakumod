@@ -1,4 +1,4 @@
-unit class Code::Snippets:ver<0.2.0>:auth<zef:lucs>;
+unit class Code::Snippets:ver<0.3.0>:auth<zef:lucs>;
 
 #`{{
 
@@ -14,18 +14,15 @@ Naming:
 use IO::Glob;
 
 # --------------------------------------------------------------------
-my token snam { (\w <[\w.-]>*) };
-my token file { <-[/]>+ };
-my token path { [ '/' <file> ]+ };
-my token main { '!' };
-
 class X is Exception {
     has $.msg;
     method message { $.msg }
 }
 
 class X::NoSuchSnipsFile is X { }
+
 class X::CantWriteToDir is X { }
+
 class X::BadSnid is X {
     has $.snid;
     has $.other-msg;
@@ -34,7 +31,12 @@ class X::BadSnid is X {
     }
 }
 
+# --------------------------------------------------------------------
 grammar SnidGrammar {
+    token snam { (\w <[\w.-]>*) }
+    token file { <-[/]>+ }
+    token path { [ '/' <file> ]+ }
+    token main { '!' }
     token snid { ^ <snam> [
         [ <main>  <file> ] | [ <main>? <path> ]
     ] $ }
@@ -42,7 +44,6 @@ grammar SnidGrammar {
 
 class Snid {...}
 
-# --------------------------------------------------------------------
 class SnidGrammar::Actions {
     my $snam;
     my $main;
@@ -51,6 +52,7 @@ class SnidGrammar::Actions {
 
     method snid ($/) {
         ($path //= $file) .= subst('&', $snam, :g);
+       # note "in snid {~$/} main <$main>";
         make Snid.new(
             snid => ~$/,
             :$snam,
@@ -62,13 +64,16 @@ class SnidGrammar::Actions {
     method snam ($/) {
         $snam = ~$/;
             # Reset values.
+       # note "Resetting";
         $main = False;
         $file = Nil;
         $path = Nil;
     }
 
     method main ($/ = '') {
+       # note ~$/, " is tilde main";
         $main = ~$/ eq "!";
+       # note "main <$main>";
     }
 
     method file ($/) {
@@ -189,7 +194,7 @@ method build (
             msg => "Path '$path' already exists for snippet alias '$snam'."
         ).throw;
         $self.snips{$snam}<paths>{$path} = $snip;
-        $self.snips{$snam}<main> = $path;
+        $self.snips{$snam}<main> = $path if $main;
     });
     return $self;
 }
